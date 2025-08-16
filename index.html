@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PassStrength - Cyberpunk Password Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --neon-blue: #00ffff;
+            --neon-pink: #ff0080;
+            --neon-green: #00ff41;
+            --neon-orange: #ff6600;
+            --neon-red: #ff0040;
+            --dark-bg: #0a0a0a;
+            --card-bg: #1a1a1a;
+            --border-glow: #333;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 50%, #0a1a1a 100%);
+            min-height: 100vh;
+            font-family: 'Rajdhani', sans-serif;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        .cyber-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -1;
+            animation: gridPulse 4s ease-in-out infinite alternate;
+        }
+
+        @keyframes gridPulse {
+            0% { opacity: 0.3; }
+            100% { opacity: 0.1; }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .logo {
+            font-family: 'Orbitron', monospace;
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 900;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-pink), var(--neon-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+            animation: logoGlow 2s ease-in-out infinite alternate;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes logoGlow {
+            0% { filter: brightness(1) drop-shadow(0 0 20px rgba(0, 255, 255, 0.3)); }
+            100% { filter: brightness(1.2) drop-shadow(0 0 30px rgba(0, 255, 255, 0.6)); }
+        }
+
+        .subtitle {
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+
+        .analyzer-card {
+            background: rgba(26, 26, 26, 0.9);
+            border: 1px solid var(--border-glow);
+            border-radius: 15px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 
+                0 0 50px rgba(0, 255, 255, 0.1),
+                inset 0 0 50px rgba(255, 255, 255, 0.02);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .analyzer-card::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-pink), var(--neon-green), var(--neon-orange));
+            border-radius: 15px;
+            opacity: 0;
+            z-index: -1;
+            transition: opacity 0.3s ease;
+        }
+
+        .analyzer-card.active::before {
+            opacity: 0.3;
+            animation: borderGlow 2s linear infinite;
+        }
+
+        @keyframes borderGlow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .input-group {
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+            color: var(--neon-blue);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .password-input-wrapper {
+            position: relative;
+        }
+
+        .password-input {
+            width: 100%;
+            padding: 1rem 3rem 1rem 1rem;
+            font-size: 1.1rem;
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--border-glow);
+            border-radius: 8px;
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .password-input:focus {
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: color 0.3s ease;
+        }
+
+        .toggle-password:hover {
+            color: var(--neon-blue);
+        }
+
+        .strength-meter {
+            margin: 1.5rem 0;
+        }
+
+        .strength-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .strength-fill {
+            height: 100%;
+            width: 0%;
+            transition: all 0.5s ease;
+            position: relative;
+        }
+
+        .strength-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .strength-text {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.5rem;
+            font-weight: 600;
+        }
+
+        .criteria-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .criterion {
+            display: flex;
+            align-items: center;
+            padding: 0.8rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-glow);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .criterion.met {
+            border-color: var(--neon-green);
+            background: rgba(0, 255, 65, 0.1);
+        }
+
+        .criterion.failed {
+            border-color: var(--neon-red);
+            background: rgba(255, 0, 64, 0.1);
+        }
+
+        .criterion-icon {
+            font-size: 1.2rem;
+            margin-right: 0.8rem;
+            min-width: 20px;
+        }
+
+        .criterion-text {
+            flex: 1;
+            font-size: 0.95rem;
+        }
+
+        .alerts {
+            margin-top: 2rem;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.8rem;
+            border-left: 4px solid;
+            animation: slideInRight 0.5s ease;
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .alert-warning {
+            background: rgba(255, 102, 0, 0.1);
+            border-color: var(--neon-orange);
+            color: var(--neon-orange);
+        }
+
+        .alert-danger {
+            background: rgba(255, 0, 64, 0.1);
+            border-color: var(--neon-red);
+            color: var(--neon-red);
+        }
+
+        .alert-success {
+            background: rgba(0, 255, 65, 0.1);
+            border-color: var(--neon-green);
+            color: var(--neon-green);
+        }
+
+        .stats {
+            margin-top: 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+        }
+
+        .stat {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-glow);
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            font-family: 'Orbitron', monospace;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 0.3rem;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .github-link {
+            color: var(--neon-blue);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .github-link:hover {
+            text-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .analyzer-card {
+                padding: 1.5rem;
+                margin: 0.5rem;
+            }
+            
+            .criteria-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .strength-text {
+                flex-direction: column;
+                gap: 0.5rem;
+                text-align: center;
+            }
+        }
+
+        /* Additional visual effects */
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: var(--neon-blue);
+            animation: float 6s infinite ease-in-out;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 0;
+            }
+            50% {
+                transform: translateY(-100px) rotate(180deg);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="cyber-grid"></div>
+    
+    <div class="container">
+        <header class="header">
+            <h1 class="logo">PassStrength</h1>
+            <p class="subtitle">Advanced Cyberpunk Password Security Analyzer</p>
+        </header>
+
+        <div class="analyzer-card" id="analyzerCard">
+            <div class="input-group">
+                <label for="passwordInput" class="input-label">Enter Password</label>
+                <div class="password-input-wrapper">
+                    <input 
+                        type="password" 
+                        id="passwordInput" 
+                        class="password-input" 
+                        placeholder="Type your password here..."
+                        autocomplete="off"
+                    >
+                    <button class="toggle-password" id="togglePassword">👁️</button>
+                </div>
+            </div>
+
+            <div class="strength-meter">
+                <div class="strength-bar">
+                    <div class="strength-fill" id="strengthFill"></div>
+                </div>
+                <div class="strength-text">
+                    <span id="strengthLabel">Enter a password</span>
+                    <span id="strengthPercentage">0%</span>
+                </div>
+            </div>
+
+            <div class="criteria-grid" id="criteriaGrid">
+                <div class="criterion" data-criterion="length">
+                    <span class="criterion-icon">📏</span>
+                    <span class="criterion-text">At least 8 characters</span>
+                </div>
+                <div class="criterion" data-criterion="uppercase">
+                    <span class="criterion-icon">🔤</span>
+                    <span class="criterion-text">Contains uppercase letter</span>
+                </div>
+                <div class="criterion" data-criterion="lowercase">
+                    <span class="criterion-icon">🔡</span>
+                    <span class="criterion-text">Contains lowercase letter</span>
+                </div>
+                <div class="criterion" data-criterion="numbers">
+                    <span class="criterion-icon">🔢</span>
+                    <span class="criterion-text">Contains numbers</span>
+                </div>
+                <div class="criterion" data-criterion="symbols">
+                    <span class="criterion-icon">🔣</span>
+                    <span class="criterion-text">Contains special symbols</span>
+                </div>
+                <div class="criterion" data-criterion="noCommon">
+                    <span class="criterion-icon">🚫</span>
+                    <span class="criterion-text">Not a common password</span>
+                </div>
+                <div class="criterion" data-criterion="noSequential">
+                    <span class="criterion-icon">🔀</span>
+                    <span class="criterion-text">No sequential patterns</span>
+                </div>
+                <div class="criterion" data-criterion="noRepeated">
+                    <span class="criterion-icon">♻️</span>
+                    <span class="criterion-text">No repeated characters</span>
+                </div>
+            </div>
+
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" id="lengthStat">0</div>
+                    <div class="stat-label">Length</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="uniqueStat">0</div>
+                    <div class="stat-label">Unique Chars</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="entropyStat">0</div>
+                    <div class="stat-label">Entropy</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="timeStat">0s</div>
+                    <div class="stat-label">Crack Time</div>
+                </div>
+            </div>
+
+            <div class="alerts" id="alertsContainer"></div>
+        </div>
+
+        <footer class="footer">
+            <p>Built by Armaan Gautam</p>
+            <p>Cybersecurity • Password Security • Flask App • UI/UX</p>
+        </footer>
+    </div>
+
+    <script>
+        // Common passwords database (subset for demo)
+        const commonPasswords = [
+            'password', '123456', '123456789', 'qwerty', 'abc123', 'password123',
+            'admin', 'letmein', 'welcome', 'monkey', 'dragon', 'master',
+            'sunshine', 'princess', 'football', 'charlie', 'aa123456', 'password1'
+        ];
+
+        // DOM Elements
+        const passwordInput = document.getElementById('passwordInput');
+        const togglePassword = document.getElementById('togglePassword');
+        const strengthFill = document.getElementById('strengthFill');
+        const strengthLabel = document.getElementById('strengthLabel');
+        const strengthPercentage = document.getElementById('strengthPercentage');
+        const criteriaGrid = document.getElementById('criteriaGrid');
+        const alertsContainer = document.getElementById('alertsContainer');
+        const analyzerCard = document.getElementById('analyzerCard');
+        
+        // Stats elements
+        const lengthStat = document.getElementById('lengthStat');
+        const uniqueStat = document.getElementById('uniqueStat');
+        const entropyStat = document.getElementById('entropyStat');
+        const timeStat = document.getElementById('timeStat');
+
+        // Password visibility toggle
+        togglePassword.addEventListener('click', () => {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            togglePassword.textContent = type === 'password' ? '👁️' : '🙈';
+        });
+
+        // Real-time password analysis
+        passwordInput.addEventListener('input', (e) => {
+            const password = e.target.value;
+            if (password.length > 0) {
+                analyzerCard.classList.add('active');
+                analyzePassword(password);
+            } else {
+                analyzerCard.classList.remove('active');
+                resetAnalysis();
+            }
+        });
+
+        function analyzePassword(password) {
+            const analysis = {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                numbers: /\d/.test(password),
+                symbols: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+                noCommon: !commonPasswords.includes(password.toLowerCase()),
+                noSequential: !hasSequentialChars(password),
+                noRepeated: !hasRepeatedChars(password)
+            };
+
+            updateCriteria(analysis);
+            updateStrengthMeter(password, analysis);
+            updateStats(password);
+            updateAlerts(password, analysis);
+        }
+
+        function hasSequentialChars(password) {
+            const sequences = ['012', '123', '234', '345', '456', '567', '678', '789', '890', 'abc', 'bcd', 'cde', 'def', 'efg', 'fgh', 'ghi', 'hij', 'ijk', 'jkl', 'klm', 'lmn', 'mno', 'nop', 'opq', 'pqr', 'qrs', 'rst', 'stu', 'tuv', 'uvw', 'vwx', 'wxy', 'xyz'];
+            return sequences.some(seq => password.toLowerCase().includes(seq));
+        }
+
+        function hasRepeatedChars(password) {
+            return /(.)\1{2,}/.test(password);
+        }
+
+        function updateCriteria(analysis) {
+            Object.keys(analysis).forEach(criterion => {
+                const element = document.querySelector(`[data-criterion="${criterion}"]`);
+                if (element) {
+                    element.classList.remove('met', 'failed');
+                    element.classList.add(analysis[criterion] ? 'met' : 'failed');
+                    
+                    const icon = element.querySelector('.criterion-icon');
+                    if (analysis[criterion]) {
+                        icon.textContent = '✅';
+                    } else {
+                        // Restore original icons for failed criteria
+                        const originalIcons = {
+                            length: '📏', uppercase: '🔤', lowercase: '🔡', numbers: '🔢',
+                            symbols: '🔣', noCommon: '🚫', noSequential: '🔀', noRepeated: '♻️'
+                        };
+                        icon.textContent = originalIcons[criterion] || '❌';
+                    }
+                }
+            });
+        }
+
+        function updateStrengthMeter(password, analysis) {
+            const criteriaCount = Object.values(analysis).filter(Boolean).length;
+            const lengthBonus = Math.min(password.length / 12, 1);
+            const complexityBonus = (new Set(password).size / password.length) || 0;
+            
+            let strength = (criteriaCount / 8) * 70 + lengthBonus * 20 + complexityBonus * 10;
+            strength = Math.min(strength, 100);
+
+            strengthFill.style.width = `${strength}%`;
+            strengthPercentage.textContent = `${Math.round(strength)}%`;
+
+            // Update colors and labels based on strength
+            if (strength < 30) {
+                strengthFill.style.background = 'linear-gradient(90deg, var(--neon-red), #ff4444)';
+                strengthLabel.textContent = 'Very Weak';
+                strengthLabel.style.color = 'var(--neon-red)';
+            } else if (strength < 50) {
+                strengthFill.style.background = 'linear-gradient(90deg, var(--neon-orange), #ffaa00)';
+                strengthLabel.textContent = 'Weak';
+                strengthLabel.style.color = 'var(--neon-orange)';
+            } else if (strength < 75) {
+                strengthFill.style.background = 'linear-gradient(90deg, #ffff00, var(--neon-orange))';
+                strengthLabel.textContent = 'Moderate';
+                strengthLabel.style.color = '#ffff00';
+            } else if (strength < 90) {
+                strengthFill.style.background = 'linear-gradient(90deg, #44ff44, var(--neon-green))';
+                strengthLabel.textContent = 'Strong';
+                strengthLabel.style.color = 'var(--neon-green)';
+            } else {
+                strengthFill.style.background = 'linear-gradient(90deg, var(--neon-green), var(--neon-blue))';
+                strengthLabel.textContent = 'Very Strong';
+                strengthLabel.style.color = 'var(--neon-blue)';
+            }
+        }
+
+        function updateStats(password) {
+            lengthStat.textContent = password.length;
+            uniqueStat.textContent = new Set(password).size;
+            
+            // Calculate entropy (simplified)
+            const entropy = Math.round(password.length * Math.log2(new Set(password).size) || 0);
+            entropyStat.textContent = entropy;
+            
+            // Estimate crack time (simplified)
+            const crackTime = calculateCrackTime(password);
+            timeStat.textContent = crackTime;
+        }
+
+        function calculateCrackTime(password) {
+            let charset = 0;
+            if (/[a-z]/.test(password)) charset += 26;
+            if (/[A-Z]/.test(password)) charset += 26;
+            if (/\d/.test(password)) charset += 10;
+            if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) charset += 32;
+            
+            const combinations = Math.pow(charset, password.length);
+            const attemptsPerSecond = 1000000000; // 1 billion attempts per second
+            const seconds = combinations / (2 * attemptsPerSecond);
+            
+            if (seconds < 60) return `${Math.round(seconds)}s`;
+            if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+            if (seconds < 86400) return `${Math.round(seconds / 3600)}h`;
+            if (seconds < 31536000) return `${Math.round(seconds / 86400)}d`;
+            return `${Math.round(seconds / 31536000)}y`;
+        }
+
+        function updateAlerts(password, analysis) {
+            alertsContainer.innerHTML = '';
+            
+            const alerts = [];
+            
+            if (commonPasswords.includes(password.toLowerCase())) {
+                alerts.push({
+                    type: 'danger',
+                    message: '⚠️ This is a commonly used password and easily guessable!'
+                });
+            }
+            
+            if (hasSequentialChars(password)) {
+                alerts.push({
+                    type: 'warning',
+                    message: '📊 Sequential characters detected. Consider mixing up the pattern.'
+                });
+            }
+            
+            if (hasRepeatedChars(password)) {
+                alerts.push({
+                    type: 'warning',
+                    message: '🔁 Repeated characters found. Add more variety for better security.'
+                });
+            }
+            
+            if (password.length < 12 && password.length >= 8) {
+                alerts.push({
+                    type: 'warning',
+                    message: '📏 Consider using 12+ characters for optimal security.'
+                });
+            }
+            
+            if (Object.values(analysis).filter(Boolean).length >= 7) {
+                alerts.push({
+                    type: 'success',
+                    message: '🛡️ Excellent! This password meets most security requirements.'
+                });
+            }
+            
+            alerts.forEach(alert => {
+                const alertElement = document.createElement('div');
+                alertElement.className = `alert alert-${alert.type}`;
+                alertElement.textContent = alert.message;
+                alertsContainer.appendChild(alertElement);
+            });
+        }
+
+        function resetAnalysis() {
+            strengthFill.style.width = '0%';
+            strengthLabel.textContent = 'Enter a password';
+            strengthLabel.style.color = 'var(--text-secondary)';
+            strengthPercentage.textContent = '0%';
+            
+            // Reset criteria
+            document.querySelectorAll('.criterion').forEach(el => {
+                el.classList.remove('met', 'failed');
+            });
+            
+            // Reset stats
+            lengthStat.textContent = '0';
+            uniqueStat.textContent = '0';
+            entropyStat.textContent = '0';
+            timeStat.textContent = '0s';
+            
+            // Clear alerts
+            alertsContainer.innerHTML = '';
+        }
+
+        // Add floating particles effect
+        function createParticle() {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 6 + 's';
+            particle.style.animationDuration = (Math.random() * 3 + 3) + 's';
+            document.body.appendChild(particle);
+            
+            setTimeout(() => {
+                particle.remove();
+            }, 6000);
+        }
+
+        // Create particles periodically
+        setInterval(createParticle, 2000);
+
+        // Add initial particles
+        for (let i = 0; i < 5; i++) {
+            setTimeout(createParticle, i * 400);
+        }
+    </script>
+</body>
+</html>
