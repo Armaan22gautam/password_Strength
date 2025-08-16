@@ -31,5 +31,3 @@ It evaluates password security in real time and provides instant feedback with a
 - **Styling:** Cyberpunk/Neon UI theme  
 
 
-# Run the Flask app
-python app.py
